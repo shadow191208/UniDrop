@@ -1,168 +1,131 @@
 # 🚀 UniDrop – Local File Sharing App (Android ↔ Windows)
 
-## 📌 Giới thiệu
+## 📌 Overview
 
-**UniDrop** là ứng dụng chia sẻ file đa thiết bị (Android ↔ Windows) hoạt động trong mạng nội bộ (LAN) hoặc Bluetooth, với mục tiêu:
+**UniDrop** là ứng dụng chia sẻ file đa thiết bị hoạt động **offline-first**, cho phép gửi file giữa:
 
-* Gửi **mọi loại file**: ảnh, video, audio, docx, excel, zip, ...
-* Không cần internet
-* Hỗ trợ **multi-device (room)**
-* Tự động **đồng bộ file (auto-sync)** giữa các thiết bị
-* Trải nghiệm đơn giản như AirDrop
+* 📱 Android
+* 🖥️ Windows
 
----
-
-## 🎯 Mục tiêu
-
-* Thay thế workflow thủ công (Zalo, cáp USB…)
-* Tạo hệ thống:
-
-  > 🔥 “Shared folder real-time giữa nhiều thiết bị”
+Không cần internet, không cần cloud.
 
 ---
 
-## 🧠 Core Concept
+## 🎯 Goal
 
-* Tạo **Room (phòng tạm thời)**
-* Nhiều thiết bị join vào room
-* Khi có file mới:
+Thay thế workflow rườm rà như:
 
-  * tất cả thiết bị **tự động download**
+* gửi qua Zalo
+* dùng cáp USB
+* upload cloud
+
+👉 bằng trải nghiệm:
+
+> ⚡ “Chọn file → gửi → tất cả thiết bị nhận ngay”
 
 ---
 
-## ⚙️ Kiến trúc tổng thể
+## 🧠 Core Features
 
-### 🧩 Mô hình
+* 📂 Gửi mọi loại file (ảnh, video, docx, excel, zip…)
+* 👥 Multi-device (room)
+* 🔄 Auto sync (tất cả thiết bị tự download)
+* ⚡ LAN tốc độ cao
+* 🔵 Bluetooth fallback
 
-* 1 **Host (Windows)**
-* Nhiều **Client (Android)**
+---
 
-```
-Android → Upload → Host (Node.js)
+## ⚙️ Architecture
+
+### 🧩 Model
+
+* 1 Host (Windows)
+* Nhiều Client (Android)
+
+```text
+Client → Upload → Host
 Host → Broadcast → Clients
 Clients → Auto Download
 ```
 
 ---
 
-## 📶 Kết nối
+## 📶 Connectivity
 
-### 1. Wi-Fi (LAN) – chính
+### 1. Wi-Fi (LAN)
 
-* Dùng HTTP + WebSocket
-* Tốc độ cao
-* Hỗ trợ nhiều thiết bị
-
----
-
-### 2. Bluetooth – phụ
-
-* Dùng khi không có Wi-Fi
-* Chỉ nên dùng:
-
-  * 1–1 hoặc file nhỏ
-* Không hỗ trợ sync toàn room tốt
+* HTTP + WebSocket
+* tốc độ cao
+* multi-device
 
 ---
 
-## 👥 UX Flow
+### 2. Bluetooth
 
-### Tạo Room
+* fallback khi không có Wi-Fi
+* chỉ dùng file nhỏ
 
-1. User 1 tạo room
-2. Nhấn "+"
-3. Chọn thiết bị gần
+---
+
+## 👥 Room System
+
+### Create Room
+
+* Host tạo room
+* Add device bằng danh sách nearby
 
 ---
 
 ### Join Room
 
-1. Device khác nhận request
-2. Nhấn “Accept”
-3. Vào room ngay
+* Device nhận request
+* Accept → join ngay
 
 ---
 
-## 📂 Cơ chế chia sẻ file
-
-### 🔥 Auto Sync (Hub Model)
-
-* Khi 1 device upload:
-
-  * Host nhận file
-  * Broadcast metadata
-  * Tất cả device tự download
-
----
+## 📂 File Sync (Hub Model)
 
 ### Flow
 
+```text
+Upload → Host → Broadcast → Auto Download
 ```
-Upload → Host → Broadcast → Download
-```
 
 ---
 
-### ⚠️ Rule quan trọng
+### Rules
 
-* Chỉ **host broadcast**
-* Client **không broadcast lại**
-  → tránh loop
-
----
-
-## 📦 Trạng thái file
-
-* `uploading`
-* `ready`
-* `downloading`
-* `synced`
+* chỉ host broadcast
+* client không broadcast lại
+* chỉ sync khi file hoàn tất
 
 ---
 
-## 🔄 Upload & Download đồng thời
+## 📦 File States
 
-* Hỗ trợ full-duplex:
-
-  * vừa upload
-  * vừa download
-
----
-
-### Queue
-
-* Upload Queue
-* Download Queue
+* uploading
+* ready
+* downloading
+* synced
 
 ---
 
-### Giới hạn
+## 🔄 Concurrent Transfer
 
-* Upload: 1–2 file
-* Download: 2–3 file
+* Upload + Download đồng thời
+
+### Queue:
+
+* uploadQueue
+* downloadQueue
 
 ---
 
 ## 🧠 Room Lifecycle
 
-### Room tồn tại khi:
-
-* còn ít nhất 1 member
-
----
-
-### Xoá Room khi:
-
-* tất cả rời → xoá ngay
-
----
-
-### Timeout
-
-* 1h không activity → xoá
-
----
+* tồn tại khi còn member
+* xoá khi tất cả rời
+* timeout 1h nếu không activity
 
 ### Activity gồm:
 
@@ -173,43 +136,10 @@ Upload → Host → Broadcast → Download
 
 ---
 
-### Heartbeat
+## 💾 Storage
 
-* mỗi 10–20s gửi ping
-* mất ping → remove device
-
----
-
-## 💾 Lưu trữ
-
-* File lưu trên **host**
-* Khi room xoá → file xoá
-
----
-
-## 🔒 Bảo mật (basic)
-
-* xác nhận khi join
-* không cần cloud
-* không lưu lâu dài
-
----
-
-## ⚠️ Giới hạn chấp nhận
-
-* Không tối ưu băng thông
-* Không P2P
-* Bluetooth hạn chế
-* Không sync cloud
-
----
-
-## 💡 Tối ưu nên có
-
-* progress bar
-* retry khi lỗi
-* cảnh báo file lớn (>100MB)
-* setting auto-download
+* file lưu trên host
+* xoá khi room kết thúc
 
 ---
 
@@ -217,7 +147,7 @@ Upload → Host → Broadcast → Download
 
 ### 📱 Android
 
-* Flutter (Dart)
+* Flutter
 
 ### 🖥️ Windows
 
@@ -225,18 +155,11 @@ Upload → Host → Broadcast → Download
 
 ---
 
-## 📡 Networking
+## 📁 Project Structure
 
-* HTTP (upload/download)
-* WebSocket (real-time event)
+### Server
 
----
-
-## 📁 Cấu trúc project
-
-### Server (Node.js)
-
-```
+```text
 server/
  ├── server.js
  ├── routes/
@@ -249,7 +172,7 @@ server/
 
 ### Flutter
 
-```
+```text
 lib/
  ├── screens/
  ├── services/
@@ -259,97 +182,76 @@ lib/
 
 ---
 
-## 🗺️ Roadmap phát triển
+## 🚀 Getting Started
 
-### ✅ Phase 1 – Kết nối
+### 1. Clone repo
 
-* Android gọi được server
-
----
-
-### ✅ Phase 2 – Gửi file
-
-* Upload file thành công
+```bash
+git clone https://github.com/shadow191208/UniDrop.git
+```
 
 ---
 
-### ✅ Phase 3 – Room
+### 2. Run server
 
-* Multi-device
-* WebSocket
-
----
-
-### ✅ Phase 4 – Auto Sync
-
-* Broadcast file
-* Auto download
+```bash
+cd server
+npm install
+node server.js
+```
 
 ---
 
-### ✅ Phase 5 – Hoàn thiện
+### 3. Run Android app
 
-* Queue
-* Progress
-* Lifecycle
+```bash
+flutter pub get
+flutter run
+```
+
+---
+
+## 🗺️ Roadmap
+
+### v1
+
+* LAN connection
+* file upload
+
+### v2
+
+* room + multi-device
+
+### v3
+
+* auto sync
+
+### v4
+
 * Bluetooth
 
 ---
 
-## ⏱️ Timeline
+## ⚠️ Known Limitations
 
-| Phase | Thời gian |
-| ----- | --------- |
-| 1     | 1–2 ngày  |
-| 2     | 2–3 ngày  |
-| 3     | 3–5 ngày  |
-| 4     | 4–7 ngày  |
-| 5     | 5–10 ngày |
+* chưa tối ưu file lớn
+* Bluetooth chậm
+* chưa có resume download
 
 ---
 
-## ❗ Những lỗi cần tránh
-
-* Broadcast từ client → gây loop
-* Download file chưa upload xong
-* Không giới hạn số file chạy đồng thời
-* Không xử lý disconnect
-
----
-
-## 🧠 Insight
-
-Bạn đang build:
-
-> 🔥 Mini distributed file sync system (local)
-
-Không phải:
-
-* chat app
-* cloud storage
-
----
-
-## 🎯 Kết luận
-
-**UniDrop =**
-
-> AirDrop + USB + Shared Folder (offline)
-
----
-
-## 🚀 Future (optional)
+## 💡 Future Ideas
 
 * WebRTC (P2P)
-* Multi-host
-* Resume download
-* File versioning
+* multi-host
+* file versioning
+* UI nâng cao
 
 ---
 
 ## 👨‍💻 Author
 
 * Personal project
-* Focus: simplicity, speed, offline-first
+* Focus: simple, fast, offline-first
 
 ---
